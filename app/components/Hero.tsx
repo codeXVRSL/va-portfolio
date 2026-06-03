@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
@@ -9,16 +9,33 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(useGSAP, SplitText);
 }
 
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 export default function Hero() {
   const root = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const [ready, setReady] = useState(false);
 
+  useIsoLayoutEffect(() => {
+    if (!root.current) return;
+    gsap.set(
+      [
+        '.hero-eyebrow > *',
+        '.hero-sub',
+        '.hero-meta > *',
+        '.hero-cta > *',
+        '.scroll-cue',
+        headlineRef.current,
+      ],
+      { autoAlpha: 0 },
+    );
+  }, []);
+
   useEffect(() => {
     const on = () => setReady(true);
     if (sessionStorage.getItem('va-loaded')) {
-      const t = setTimeout(on, 100);
-      return () => clearTimeout(t);
+      const t = window.setTimeout(on, 60);
+      return () => window.clearTimeout(t);
     }
     window.addEventListener('loader:done', on);
     return () => window.removeEventListener('loader:done', on);
@@ -26,7 +43,7 @@ export default function Hero() {
 
   useGSAP(
     () => {
-      if (!headlineRef.current || !ready) return;
+      if (!ready || !headlineRef.current) return;
 
       const split = SplitText.create(headlineRef.current, {
         type: 'lines,chars',
@@ -35,22 +52,47 @@ export default function Hero() {
         autoSplit: true,
       });
 
-      gsap.set(split.chars, { yPercent: 110, opacity: 1 });
+      gsap.set(split.chars, { yPercent: 110 });
+      gsap.set(headlineRef.current, { autoAlpha: 1 });
 
-      const tl = gsap.timeline({ delay: 0.1 });
-      tl.from('.hero-eyebrow > *', {
-        y: 18, opacity: 0, duration: 0.7, stagger: 0.06, ease: 'expo.out',
+      const tl = gsap.timeline();
+      tl.to('.hero-eyebrow > *', {
+        autoAlpha: 1,
+        y: 0,
+        duration: 0.7,
+        stagger: 0.05,
+        ease: 'expo.out',
       })
-        .to(split.chars, {
-          yPercent: 0,
-          duration: 1.05,
-          ease: 'expo.out',
-          stagger: { each: 0.012, from: 'start' },
-        }, 0.15)
-        .from('.hero-sub', { y: 24, opacity: 0, duration: 0.9, ease: 'expo.out' }, 0.6)
-        .from('.hero-meta > *', { y: 14, opacity: 0, duration: 0.7, stagger: 0.07, ease: 'expo.out' }, 0.8)
-        .from('.hero-cta > *', { y: 18, opacity: 0, duration: 0.7, stagger: 0.08, ease: 'expo.out' }, 0.95)
-        .from('.scroll-cue', { y: 16, opacity: 0, duration: 0.6, ease: 'expo.out' }, 1.1);
+        .to(
+          split.chars,
+          {
+            yPercent: 0,
+            duration: 1.0,
+            ease: 'expo.out',
+            stagger: { each: 0.012, from: 'start' },
+          },
+          0.05,
+        )
+        .to(
+          '.hero-sub',
+          { autoAlpha: 1, y: 0, duration: 0.9, ease: 'expo.out' },
+          0.45,
+        )
+        .to(
+          '.hero-meta > *',
+          { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.06, ease: 'expo.out' },
+          0.6,
+        )
+        .to(
+          '.hero-cta > *',
+          { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.08, ease: 'expo.out' },
+          0.75,
+        )
+        .to(
+          '.scroll-cue',
+          { autoAlpha: 1, y: 0, duration: 0.6, ease: 'expo.out' },
+          0.9,
+        );
 
       return () => split.revert();
     },
@@ -61,7 +103,9 @@ export default function Hero() {
     const el = document.querySelector('.scroll-cue-arrow');
     if (!el) return;
     const a = gsap.to(el, { y: 8, repeat: -1, yoyo: true, duration: 1.2, ease: 'sine.inOut' });
-    return () => { a.kill(); };
+    return () => {
+      a.kill();
+    };
   }, []);
 
   return (
@@ -123,10 +167,7 @@ export default function Hero() {
                 <span className="transition-transform duration-500 group-hover:translate-x-1">→</span>
               </a>
             </Magnetic>
-            <a
-              href="#contact"
-              className="group relative text-sm text-ink"
-            >
+            <a href="#contact" className="group relative text-sm text-ink">
               Work with me
               <span className="absolute -bottom-0.5 left-0 h-px w-full bg-ink/30 transition-all duration-500 group-hover:bg-ink" />
             </a>

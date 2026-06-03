@@ -12,35 +12,47 @@ export default function Loader() {
 
   useEffect(() => {
     if (sessionStorage.getItem('va-loaded')) {
-      setDone(true);
       window.dispatchEvent(new Event('loader:done'));
+      setDone(true);
       return;
     }
 
     document.body.style.overflow = 'hidden';
     const counterObj = { v: 0 };
+    let revealFired = false;
+
+    const fireReveal = () => {
+      if (revealFired) return;
+      revealFired = true;
+      window.dispatchEvent(new Event('loader:done'));
+    };
+
     const tl = gsap.timeline({
       onComplete: () => {
         sessionStorage.setItem('va-loaded', '1');
         document.body.style.overflow = '';
-        window.dispatchEvent(new Event('loader:done'));
         setDone(true);
       },
     });
 
     tl.to(counterObj, {
       v: 100,
-      duration: 1.6,
+      duration: 1.05,
       ease: 'power2.inOut',
       onUpdate: () => {
         if (counterRef.current) counterRef.current.textContent = String(Math.round(counterObj.v));
       },
     })
-      .to(labelRef.current, { opacity: 0, y: -12, duration: 0.4, ease: 'power2.in' }, '-=0.2')
-      .to(counterRef.current, { opacity: 0, y: -16, duration: 0.4, ease: 'power2.in' }, '<')
-      .to(rowARef.current, { xPercent: -100, duration: 1.0, ease: 'expo.inOut' })
-      .to(rowBRef.current, { xPercent: 100, duration: 1.0, ease: 'expo.inOut' }, '<')
-      .to(overlayRef.current, { autoAlpha: 0, duration: 0.2 }, '-=0.1');
+      .to([labelRef.current, counterRef.current], {
+        opacity: 0,
+        y: -14,
+        duration: 0.3,
+        ease: 'power2.in',
+      }, '-=0.1')
+      .add(fireReveal, '>-0.05')
+      .to(rowARef.current, { xPercent: -100, duration: 0.85, ease: 'expo.inOut' }, '<')
+      .to(rowBRef.current, { xPercent: 100, duration: 0.85, ease: 'expo.inOut' }, '<')
+      .set(overlayRef.current, { autoAlpha: 0 });
 
     return () => {
       tl.kill();
