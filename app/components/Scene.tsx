@@ -57,6 +57,7 @@ const frag = /* glsl */ `
   uniform sampler2D uTexA;
   uniform sampler2D uTexB;
   uniform vec3 uAccent;
+  uniform vec3 uPaper;
   varying vec2 vUv;
   varying float vDisp;
 
@@ -101,7 +102,17 @@ const frag = /* glsl */ `
     float v = smoothstep(1.2, 0.3, length(vUv - 0.5) * 1.6);
     col *= mix(0.82, 1.0, v);
 
-    gl_FragColor = vec4(col, 1.0);
+    // soft paper fade on left edge — protects readability of hero text
+    float leftFade = smoothstep(0.0, 0.45, vUv.x);
+    col = mix(uPaper, col, leftFade);
+    float alpha = leftFade;
+
+    // gentle fade on top/bottom too so plane breathes into page
+    float topFade = smoothstep(0.0, 0.12, vUv.y);
+    float botFade = smoothstep(0.0, 0.12, 1.0 - vUv.y);
+    alpha *= topFade * botFade;
+
+    gl_FragColor = vec4(col, alpha);
   }
 `;
 
@@ -159,6 +170,17 @@ function ContentPlane() {
     return () => st.kill();
   }, []);
 
+  const isMobile = size.width < 768;
+  const baseScale = useRef(isMobile ? 0.7 : 0.95);
+  const basePosX = useRef(isMobile ? 0.0 : 1.35);
+  const basePosY = useRef(isMobile ? -0.7 : 0.15);
+
+  useEffect(() => {
+    baseScale.current = isMobile ? 0.7 : 0.95;
+    basePosX.current = isMobile ? 0.0 : 1.35;
+    basePosY.current = isMobile ? -0.7 : 0.15;
+  }, [isMobile]);
+
   useFrame((state, delta) => {
     if (matRef.current) {
       const u = matRef.current.uniforms;
@@ -167,29 +189,25 @@ function ContentPlane() {
       u.uScroll.value = scrollRef.current;
       u.uTexA.value = textures[idxA.current];
       u.uTexB.value = textures[idxB.current];
-      pointerRef.current.lerp(state.pointer, 0.06);
+      pointerRef.current.lerp(state.pointer, 0.04);
       u.uPointer.value.copy(pointerRef.current);
     }
     if (meshRef.current) {
       const t = state.clock.elapsedTime;
-      meshRef.current.rotation.z = Math.sin(t * 0.15) * 0.012;
-      meshRef.current.rotation.y = -0.18 + state.pointer.x * 0.04;
+      meshRef.current.position.x = basePosX.current + Math.sin(t * 0.45) * 0.09 + pointerRef.current.x * 0.08;
+      meshRef.current.position.y =
+        basePosY.current + Math.sin(t * 0.32) * 0.08 + Math.cos(t * 0.22) * 0.04 + pointerRef.current.y * 0.05;
+      meshRef.current.rotation.z = Math.sin(t * 0.4) * 0.04;
+      meshRef.current.rotation.y = -0.22 + Math.sin(t * 0.28) * 0.07 + pointerRef.current.x * 0.05;
+      meshRef.current.rotation.x = Math.sin(t * 0.18) * 0.04;
+      const s = baseScale.current * (1 + Math.sin(t * 0.55) * 0.02);
+      meshRef.current.scale.set(s, s, s);
     }
   });
 
-  const isMobile = size.width < 768;
-  const scale = isMobile ? 0.8 : 1.0;
-  const posX = isMobile ? 0.0 : 0.95;
-  const posY = isMobile ? -0.6 : 0.05;
-
   return (
-    <mesh
-      ref={meshRef}
-      position={[posX, posY, 0]}
-      rotation={[0, -0.18, 0.02]}
-      scale={scale}
-    >
-      <planeGeometry args={[1.25, 1.56, 96, 96]} />
+    <mesh ref={meshRef} rotation={[0, -0.22, 0]}>
+      <planeGeometry args={[1.4, 1.75, 96, 96]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={vert}
@@ -202,8 +220,10 @@ function ContentPlane() {
           uTexA: { value: textures[0] },
           uTexB: { value: textures[1] },
           uAccent: { value: new THREE.Color('#C66B3D') },
+          uPaper: { value: new THREE.Color('#F4F1EA') },
         }}
-        transparent={false}
+        transparent
+        depthWrite={false}
       />
     </mesh>
   );

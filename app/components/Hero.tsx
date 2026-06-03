@@ -125,7 +125,7 @@ export default function Hero() {
 
         <h1
           ref={headlineRef}
-          className="font-display text-[14vw] leading-[0.92] tracking-tightest md:text-[10.5vw]"
+          className="font-display text-[14vw] leading-[0.92] tracking-tightest md:text-[9.5vw] md:max-w-[80%]"
         >
           <span>Social media that turns</span>
           <br />
