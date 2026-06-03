@@ -1,6 +1,7 @@
 'use client';
-import SectionLabel from './SectionLabel';
 import Reveal from './Reveal';
+import SplitHeading from './SplitHeading';
+import Counter from './Counter';
 
 const reasons = [
   { n: 'i.', title: 'Experienced', body: '7+ years in social media management, copywriting, and digital communication across many brands.' },
@@ -12,10 +13,10 @@ const reasons = [
 ];
 
 const stats = [
-  { v: '7+', l: 'Years experience' },
-  { v: '20+', l: 'Core skills' },
-  { v: '6+', l: 'Platforms managed' },
-  { v: '10+', l: 'Tools mastered' },
+  { v: 7, l: 'Years experience' },
+  { v: 20, l: 'Core skills' },
+  { v: 6, l: 'Platforms managed' },
+  { v: 10, l: 'Tools mastered' },
 ];
 
 export default function Why() {
@@ -27,18 +28,20 @@ export default function Why() {
           <span className="h-px flex-1 max-w-12 bg-paper/20" />
           <span>Why work with me</span>
         </div>
-        <Reveal>
-          <h2 className="font-display text-5xl leading-[1.02] tracking-tightest md:text-7xl">
-            A safe pair of hands <br />
-            for your <span className="italic text-accent">socials</span>.
-          </h2>
-        </Reveal>
+        <SplitHeading
+          as="h2"
+          className="font-display text-5xl leading-[1.02] tracking-tightest md:text-7xl"
+        >
+          A safe pair of hands for your socials.
+        </SplitHeading>
 
         <div className="mt-16 grid grid-cols-1 gap-x-12 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
           {reasons.map((r, i) => (
-            <Reveal key={r.title} delay={(i % 3) * 0.08}>
+            <Reveal key={r.title} delay={(i % 3) * 0.08} className="group">
               <div className="text-xs font-mono text-accent">{r.n}</div>
-              <h3 className="mt-3 font-display text-2xl tracking-tightest">{r.title}</h3>
+              <h3 className="mt-3 font-display text-2xl tracking-tightest transition-colors duration-500 group-hover:text-accent">
+                {r.title}
+              </h3>
               <p className="mt-3 text-sm leading-relaxed text-paper/75">{r.body}</p>
             </Reveal>
           ))}
@@ -46,9 +49,9 @@ export default function Why() {
 
         <div className="mt-20 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-paper/15 bg-paper/15 md:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.l} className="bg-ink px-6 py-10">
+            <div key={s.l} className="bg-ink px-6 py-10 transition-colors duration-500 hover:bg-accent">
               <div className="font-display text-5xl tracking-tightest md:text-6xl">
-                {s.v}
+                <Counter to={s.v} />
               </div>
               <div className="mt-3 text-xs uppercase tracking-[0.18em] text-paper/60">
                 {s.l}

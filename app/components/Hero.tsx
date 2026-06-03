@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
+import Magnetic from './Magnetic';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(useGSAP, SplitText);
@@ -11,11 +12,21 @@ if (typeof window !== 'undefined') {
 export default function Hero() {
   const root = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
-  const subRef = useRef<HTMLParagraphElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const on = () => setReady(true);
+    if (sessionStorage.getItem('va-loaded')) {
+      const t = setTimeout(on, 100);
+      return () => clearTimeout(t);
+    }
+    window.addEventListener('loader:done', on);
+    return () => window.removeEventListener('loader:done', on);
+  }, []);
 
   useGSAP(
     () => {
-      if (!headlineRef.current) return;
+      if (!headlineRef.current || !ready) return;
 
       const split = SplitText.create(headlineRef.current, {
         type: 'lines,chars',
@@ -26,53 +37,31 @@ export default function Hero() {
 
       gsap.set(split.chars, { yPercent: 110, opacity: 1 });
 
-      const tl = gsap.timeline({ delay: 0.25 });
-      tl.to(split.chars, {
-        yPercent: 0,
-        duration: 1.05,
-        ease: 'expo.out',
-        stagger: { each: 0.012, from: 'start' },
+      const tl = gsap.timeline({ delay: 0.1 });
+      tl.from('.hero-eyebrow > *', {
+        y: 18, opacity: 0, duration: 0.7, stagger: 0.06, ease: 'expo.out',
       })
-        .from(
-          '.hero-eyebrow > *',
-          { y: 18, opacity: 0, duration: 0.7, stagger: 0.06, ease: 'expo.out' },
-          0.15,
-        )
-        .from(
-          '.hero-sub',
-          { y: 24, opacity: 0, duration: 0.9, ease: 'expo.out' },
-          0.6,
-        )
-        .from(
-          '.hero-meta > *',
-          { y: 14, opacity: 0, duration: 0.7, stagger: 0.07, ease: 'expo.out' },
-          0.8,
-        )
-        .from(
-          '.hero-cta > *',
-          { y: 18, opacity: 0, duration: 0.7, stagger: 0.08, ease: 'expo.out' },
-          0.95,
-        );
+        .to(split.chars, {
+          yPercent: 0,
+          duration: 1.05,
+          ease: 'expo.out',
+          stagger: { each: 0.012, from: 'start' },
+        }, 0.15)
+        .from('.hero-sub', { y: 24, opacity: 0, duration: 0.9, ease: 'expo.out' }, 0.6)
+        .from('.hero-meta > *', { y: 14, opacity: 0, duration: 0.7, stagger: 0.07, ease: 'expo.out' }, 0.8)
+        .from('.hero-cta > *', { y: 18, opacity: 0, duration: 0.7, stagger: 0.08, ease: 'expo.out' }, 0.95)
+        .from('.scroll-cue', { y: 16, opacity: 0, duration: 0.6, ease: 'expo.out' }, 1.1);
 
       return () => split.revert();
     },
-    { scope: root },
+    { scope: root, dependencies: [ready] },
   );
 
-  // chevron pulse
   useEffect(() => {
-    const el = document.querySelector('.scroll-cue');
+    const el = document.querySelector('.scroll-cue-arrow');
     if (!el) return;
-    const a = gsap.to(el, {
-      y: 8,
-      repeat: -1,
-      yoyo: true,
-      duration: 1.4,
-      ease: 'sine.inOut',
-    });
-    return () => {
-      a.kill();
-    };
+    const a = gsap.to(el, { y: 8, repeat: -1, yoyo: true, duration: 1.2, ease: 'sine.inOut' });
+    return () => { a.kill(); };
   }, []);
 
   return (
@@ -102,10 +91,7 @@ export default function Hero() {
         </h1>
 
         <div className="grid grid-cols-1 gap-10 md:grid-cols-12">
-          <p
-            ref={subRef}
-            className="hero-sub col-span-1 max-w-xl text-base leading-relaxed text-ink/80 md:col-span-6 md:col-start-1"
-          >
+          <p className="hero-sub col-span-1 max-w-xl text-base leading-relaxed text-ink/80 md:col-span-6 md:col-start-1">
             I&rsquo;m Jamaica — a social media manager, content creator, and virtual assistant
             helping real estate professionals, growing brands, and busy entrepreneurs strengthen
             their online presence through strategic content, short-form video, and reliable
@@ -114,7 +100,10 @@ export default function Hero() {
 
           <div className="hero-meta col-span-1 flex flex-col gap-3 text-sm text-muted md:col-span-3 md:col-start-8">
             <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
+              </span>
               Open for projects
             </div>
             <div className="rule" />
@@ -125,25 +114,28 @@ export default function Hero() {
           </div>
 
           <div className="hero-cta col-span-1 flex flex-col items-start gap-3 md:col-span-2 md:col-start-11 md:items-end">
-            <a
-              href="#work"
-              className="group inline-flex items-center gap-3 rounded-full bg-ink px-6 py-3 text-sm text-paper transition hover:bg-accent"
-            >
-              View my work
-              <span className="transition group-hover:translate-x-1">→</span>
-            </a>
+            <Magnetic strength={0.25}>
+              <a
+                href="#work"
+                className="group inline-flex items-center gap-3 rounded-full bg-ink px-6 py-3 text-sm text-paper transition hover:bg-accent"
+              >
+                View my work
+                <span className="transition-transform duration-500 group-hover:translate-x-1">→</span>
+              </a>
+            </Magnetic>
             <a
               href="#contact"
-              className="text-sm text-ink underline decoration-ink/30 underline-offset-4 transition hover:decoration-ink"
+              className="group relative text-sm text-ink"
             >
               Work with me
+              <span className="absolute -bottom-0.5 left-0 h-px w-full bg-ink/30 transition-all duration-500 group-hover:bg-ink" />
             </a>
           </div>
         </div>
 
         <div className="scroll-cue mt-6 inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted">
           <span>Scroll</span>
-          <span aria-hidden>↓</span>
+          <span aria-hidden className="scroll-cue-arrow">↓</span>
         </div>
       </div>
     </section>

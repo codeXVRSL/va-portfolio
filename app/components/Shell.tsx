@@ -5,6 +5,9 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Nav from './Nav';
 import Cursor from './Cursor';
+import Loader from './Loader';
+import ScrollProgress from './ScrollProgress';
+import SectionIndex from './SectionIndex';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -47,6 +50,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <Loader />
+      <ScrollProgress />
+      <SectionIndex />
       <Cursor />
       <div className="grid-overlay" aria-hidden />
       <Nav />
