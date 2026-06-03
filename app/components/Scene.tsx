@@ -243,7 +243,7 @@ function AmbientGradient() {
 
 export default function Scene() {
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10">
+    <div className="pointer-events-none fixed inset-0" style={{ zIndex: -1 }}>
       <Canvas
         dpr={[1, 1.6]}
         camera={{ position: [0, 0, 3.2], fov: 38 }}

@@ -12,12 +12,19 @@
 
 * { box-sizing: border-box; }
 
-html, body {
+html {
   background: var(--bg);
+}
+
+html, body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+body {
+  background: transparent;
 }
 
 html.lenis, html.lenis body { height: auto; }
