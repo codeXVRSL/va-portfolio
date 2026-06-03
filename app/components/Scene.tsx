@@ -1,26 +1,49 @@
 'use client';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Suspense, useRef, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useTexture } from '@react-three/drei';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
+if (typeof window !== 'undefined') gsap.registerPlugin(ScrollTrigger);
+
+const works = [
+  '/work/002-real-estate-ig-feed.jpg',
+  '/work/004-fha-vs-conventional.jpg',
+  '/work/010-skincare-myths-or-facts.jpg',
+  '/work/013-if-you-could-only-pick-one.jpg',
+  '/work/015-happy-easter.jpg',
+  '/work/009-realtor-introduction.jpg',
+];
+
 const vert = /* glsl */ `
   uniform float uTime;
-  uniform float uProgress;
+  uniform float uTransition;
+  uniform float uScroll;
+  uniform vec2 uPointer;
   varying vec2 vUv;
   varying float vDisp;
 
-  float noise(vec3 p){
-    return sin(p.x*1.7+uTime*0.4)*sin(p.y*1.3-uTime*0.3)*sin(p.z*1.1+uTime*0.2);
+  float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+  float noise(vec2 p){
+    vec2 i=floor(p), f=fract(p);
+    float a=hash(i), b=hash(i+vec2(1.,0.)), c=hash(i+vec2(0.,1.)), d=hash(i+vec2(1.,1.));
+    vec2 u=f*f*(3.-2.*f);
+    return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;
   }
+
+  float parabola(float x, float k){ return pow(4.0 * x * (1.0 - x), k); }
 
   void main(){
     vUv = uv;
     vec3 pos = position;
-    float n = noise(vec3(pos.xy*1.6, uTime*0.2));
-    float warp = mix(0.05, 0.42, uProgress);
-    pos.z += n * warp;
+    float n = noise(pos.xy * 2.5 + uTime * 0.15);
+    float peak = parabola(uTransition, 1.6);
+    float warp = peak * 0.55 + sin(uTime * 0.25) * 0.015;
+    pos.z += (n - 0.5) * warp;
+    pos.x += uPointer.x * 0.04;
+    pos.y += uPointer.y * 0.04 - uScroll * 0.35;
     vDisp = n;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
   }
@@ -29,83 +52,190 @@ const vert = /* glsl */ `
 const frag = /* glsl */ `
   precision highp float;
   uniform float uTime;
-  uniform float uProgress;
-  uniform vec3 uColorA;
-  uniform vec3 uColorB;
-  uniform vec3 uColorC;
+  uniform float uTransition;
+  uniform float uScroll;
+  uniform sampler2D uTexA;
+  uniform sampler2D uTexB;
+  uniform vec3 uAccent;
   varying vec2 vUv;
   varying float vDisp;
 
-  float parabola(float x, float k){
-    return pow(4.0 * x * (1.0 - x), k);
-  }
+  float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+
+  float parabola(float x, float k){ return pow(4.0 * x * (1.0 - x), k); }
 
   void main(){
-    float t = vUv.y + vDisp*0.25 + sin(uTime*0.15)*0.05;
-    vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 1.0, t));
-    col = mix(col, uColorC, smoothstep(0.55, 1.0, t + vDisp*0.4));
+    float t = smoothstep(0.0, 1.0, uTransition);
+    float ripple = (vDisp - 0.5) * 0.22 * parabola(uTransition, 1.4);
+    vec2 uv = vUv + vec2(ripple);
 
-    float dt = parabola(uProgress, 1.2);
-    float bands = sin((vUv.y + vDisp*0.4)*42.0 + uTime*0.2) * 0.5 + 0.5;
-    col = mix(col, col * (0.85 + bands*0.18), 0.55 + dt*0.35);
+    float peak = parabola(uTransition, 1.6);
+    float shift = peak * 0.012;
+    vec3 a;
+    a.r = texture2D(uTexA, uv + vec2(shift, 0.0)).r;
+    a.g = texture2D(uTexA, uv).g;
+    a.b = texture2D(uTexA, uv - vec2(shift, 0.0)).b;
+    vec3 b;
+    b.r = texture2D(uTexB, uv + vec2(shift, 0.0)).r;
+    b.g = texture2D(uTexB, uv).g;
+    b.b = texture2D(uTexB, uv - vec2(shift, 0.0)).b;
 
-    float vig = smoothstep(1.3, 0.2, length(vUv - 0.5)*1.6);
-    col *= mix(0.85, 1.0, vig);
+    float mask = smoothstep(t - 0.18, t + 0.18, vDisp);
+    vec3 col = mix(a, b, 1.0 - mask);
 
-    float grain = fract(sin(dot(vUv*1024.0, vec2(12.9898,78.233)))*43758.5453);
-    col += (grain - 0.5) * 0.04;
+    // LED grid overlay — subtle
+    float gx = abs(sin(vUv.x * 220.0));
+    float gy = abs(sin(vUv.y * 280.0));
+    float grid = (1.0 - smoothstep(0.85, 1.0, gx)) * (1.0 - smoothstep(0.85, 1.0, gy));
+    col *= mix(0.96, 1.0, grid);
+
+    // grain
+    float g = hash(vUv * vec2(1080.0, 1920.0) + uTime);
+    col += (g - 0.5) * 0.05;
+
+    // accent rim — left edge picks up brand color subtly
+    float rim = smoothstep(0.0, 0.18, vUv.x);
+    col = mix(uAccent * 0.5 + col * 0.5, col, rim);
+
+    // vignette
+    float v = smoothstep(1.2, 0.3, length(vUv - 0.5) * 1.6);
+    col *= mix(0.82, 1.0, v);
 
     gl_FragColor = vec4(col, 1.0);
   }
 `;
 
-function Plane() {
+function ContentPlane() {
   const matRef = useRef<THREE.ShaderMaterial>(null!);
   const meshRef = useRef<THREE.Mesh>(null!);
+  const textures = useTexture(works) as THREE.Texture[];
+
+  const idxA = useRef(0);
+  const idxB = useRef(1);
+  const transition = useRef(0);
+  const scrollRef = useRef(0);
+  const pointerRef = useRef(new THREE.Vector2(0, 0));
+  const { size } = useThree();
 
   useEffect(() => {
-    if (!matRef.current) return;
-    const tween = gsap.to(matRef.current.uniforms.uProgress, {
-      value: 1,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: 'body',
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 1.2,
+    textures.forEach((t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.minFilter = THREE.LinearFilter;
+      t.generateMipmaps = false;
+    });
+  }, [textures]);
+
+  useEffect(() => {
+    let killed = false;
+    const cycle = () => {
+      if (killed) return;
+      gsap.to(transition, {
+        current: 1,
+        duration: 1.6,
+        ease: 'power2.inOut',
+        onComplete: () => {
+          if (killed) return;
+          idxA.current = idxB.current;
+          idxB.current = (idxB.current + 1) % textures.length;
+          transition.current = 0;
+        },
+      });
+    };
+    const i = window.setInterval(cycle, 3600);
+    return () => {
+      killed = true;
+      window.clearInterval(i);
+    };
+  }, [textures.length]);
+
+  useEffect(() => {
+    const st = ScrollTrigger.create({
+      start: 0,
+      end: 'max',
+      onUpdate: (self) => {
+        scrollRef.current = self.progress;
       },
     });
-    return () => {
-      tween.scrollTrigger?.kill();
-      tween.kill();
-    };
+    return () => st.kill();
   }, []);
 
   useFrame((state, delta) => {
     if (matRef.current) {
-      matRef.current.uniforms.uTime.value += delta;
+      const u = matRef.current.uniforms;
+      u.uTime.value += delta;
+      u.uTransition.value = transition.current;
+      u.uScroll.value = scrollRef.current;
+      u.uTexA.value = textures[idxA.current];
+      u.uTexB.value = textures[idxB.current];
+      pointerRef.current.lerp(state.pointer, 0.06);
+      u.uPointer.value.copy(pointerRef.current);
     }
     if (meshRef.current) {
       const t = state.clock.elapsedTime;
-      meshRef.current.rotation.z = Math.sin(t * 0.05) * 0.04;
+      meshRef.current.rotation.z = Math.sin(t * 0.15) * 0.012;
+      meshRef.current.rotation.y = -0.18 + state.pointer.x * 0.04;
     }
   });
 
+  const isMobile = size.width < 768;
+  const scale = isMobile ? 0.8 : 1.0;
+  const posX = isMobile ? 0.0 : 0.95;
+  const posY = isMobile ? -0.6 : 0.05;
+
   return (
-    <mesh ref={meshRef} rotation={[-0.18, 0, 0]}>
-      <planeGeometry args={[6, 6, 96, 96]} />
+    <mesh
+      ref={meshRef}
+      position={[posX, posY, 0]}
+      rotation={[0, -0.18, 0.02]}
+      scale={scale}
+    >
+      <planeGeometry args={[1.25, 1.56, 96, 96]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={vert}
         fragmentShader={frag}
         uniforms={{
           uTime: { value: 0 },
-          uProgress: { value: 0 },
-          uColorA: { value: new THREE.Color('#EFEAE0') },
-          uColorB: { value: new THREE.Color('#C66B3D') },
-          uColorC: { value: new THREE.Color('#0B0B0A') },
+          uTransition: { value: 0 },
+          uScroll: { value: 0 },
+          uPointer: { value: new THREE.Vector2(0, 0) },
+          uTexA: { value: textures[0] },
+          uTexB: { value: textures[1] },
+          uAccent: { value: new THREE.Color('#C66B3D') },
         }}
-        wireframe={false}
+        transparent={false}
+      />
+    </mesh>
+  );
+}
+
+function AmbientGradient() {
+  const matRef = useRef<THREE.ShaderMaterial>(null!);
+  useFrame((_, delta) => {
+    if (matRef.current) matRef.current.uniforms.uTime.value += delta;
+  });
+  return (
+    <mesh position={[0, 0, -2]} scale={10}>
+      <planeGeometry args={[1, 1, 1, 1]} />
+      <shaderMaterial
+        ref={matRef}
+        uniforms={{ uTime: { value: 0 } }}
+        vertexShader={`varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`}
+        fragmentShader={`
+          precision highp float;
+          uniform float uTime;
+          varying vec2 vUv;
+          float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+          void main(){
+            vec3 paper = vec3(0.957, 0.945, 0.918);
+            vec3 cream = vec3(0.937, 0.918, 0.878);
+            float r = length(vUv - 0.5);
+            vec3 col = mix(paper, cream * 0.94, smoothstep(0.0, 0.85, r));
+            float g = hash(vUv * 2048.0 + uTime);
+            col += (g - 0.5) * 0.012;
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `}
       />
     </mesh>
   );
@@ -117,10 +247,15 @@ export default function Scene() {
       <Canvas
         dpr={[1, 1.6]}
         camera={{ position: [0, 0, 3.2], fov: 38 }}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        gl={{
+          antialias: true,
+          powerPreference: 'high-performance',
+          toneMapping: THREE.ACESFilmicToneMapping,
+        }}
       >
         <Suspense fallback={null}>
-          <Plane />
+          <AmbientGradient />
+          <ContentPlane />
         </Suspense>
       </Canvas>
     </div>
