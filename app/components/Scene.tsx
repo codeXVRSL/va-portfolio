@@ -235,9 +235,9 @@ function PaperPlane() {
 
   const halfVW = viewport.width / 2;
   const halfPW = planeWidth / 2;
-  // desktop: anchor center near right edge, bleed ~25% of plane off the side
+  // desktop: sit just right of viewport center, near the headline's trailing edge
   // mobile: dead-center horizontally, sit in lower third
-  const posX = isMobile ? 0 : halfVW - halfPW * 0.55;
+  const posX = isMobile ? 0 : Math.min(halfVW - halfPW - 0.25, halfPW * 0.55);
   const posY = isMobile ? -viewport.height * 0.22 : 0;
 
   return (
