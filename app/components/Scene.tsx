@@ -1,7 +1,7 @@
 'use client';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -15,37 +15,16 @@ const works = [
   '/work/013-if-you-could-only-pick-one.jpg',
   '/work/015-happy-easter.jpg',
   '/work/009-realtor-introduction.jpg',
+  '/work/006-just-sold-highlights.jpg',
+  '/work/012-nene-chicken.jpg',
+  '/work/014-still-thinking-about-this.jpg',
 ];
 
 const vert = /* glsl */ `
-  uniform float uTime;
-  uniform float uTransition;
-  uniform float uScroll;
-  uniform vec2 uPointer;
   varying vec2 vUv;
-  varying float vDisp;
-
-  float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
-  float noise(vec2 p){
-    vec2 i=floor(p), f=fract(p);
-    float a=hash(i), b=hash(i+vec2(1.,0.)), c=hash(i+vec2(0.,1.)), d=hash(i+vec2(1.,1.));
-    vec2 u=f*f*(3.-2.*f);
-    return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;
-  }
-
-  float parabola(float x, float k){ return pow(4.0 * x * (1.0 - x), k); }
-
   void main(){
     vUv = uv;
-    vec3 pos = position;
-    float n = noise(pos.xy * 2.5 + uTime * 0.15);
-    float peak = parabola(uTransition, 1.6);
-    float warp = peak * 0.55 + sin(uTime * 0.25) * 0.015;
-    pos.z += (n - 0.5) * warp;
-    pos.x += uPointer.x * 0.04;
-    pos.y += uPointer.y * 0.04 - uScroll * 0.35;
-    vDisp = n;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
@@ -53,88 +32,109 @@ const frag = /* glsl */ `
   precision highp float;
   uniform float uTime;
   uniform float uTransition;
-  uniform float uScroll;
   uniform sampler2D uTexA;
   uniform sampler2D uTexB;
-  uniform vec3 uAccent;
   uniform vec3 uPaper;
+  uniform float uRadius;
+  uniform float uAspect;
+  uniform float uShadow;
+  uniform float uLeftFade;
   varying vec2 vUv;
-  varying float vDisp;
 
   float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 
-  float parabola(float x, float k){ return pow(4.0 * x * (1.0 - x), k); }
+  // signed-distance to rounded rectangle in uv space
+  float sdRoundedBox(vec2 p, vec2 b, float r){
+    vec2 q = abs(p) - b + r;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+  }
 
   void main(){
-    float t = smoothstep(0.0, 1.0, uTransition);
-    float ripple = (vDisp - 0.5) * 0.22 * parabola(uTransition, 1.4);
-    vec2 uv = vUv + vec2(ripple);
+    // remap uv so (0,0) is center, normalize for aspect
+    vec2 p = (vUv - 0.5) * vec2(uAspect, 1.0);
+    vec2 half = vec2(uAspect * 0.5, 0.5);
 
-    float peak = parabola(uTransition, 1.6);
-    float shift = peak * 0.012;
-    vec3 a;
-    a.r = texture2D(uTexA, uv + vec2(shift, 0.0)).r;
-    a.g = texture2D(uTexA, uv).g;
-    a.b = texture2D(uTexA, uv - vec2(shift, 0.0)).b;
-    vec3 b;
-    b.r = texture2D(uTexB, uv + vec2(shift, 0.0)).r;
-    b.g = texture2D(uTexB, uv).g;
-    b.b = texture2D(uTexB, uv - vec2(shift, 0.0)).b;
+    // outer signed distance — negative inside card, positive outside
+    float d = sdRoundedBox(p, half - uRadius, uRadius) - uRadius;
 
-    float mask = smoothstep(t - 0.18, t + 0.18, vDisp);
-    vec3 col = mix(a, b, 1.0 - mask);
+    // card mask with anti-aliased edge
+    float aa = fwidth(d) * 1.2;
+    float cardMask = 1.0 - smoothstep(-aa, aa, d);
 
-    // LED grid overlay — subtle
-    float gx = abs(sin(vUv.x * 220.0));
-    float gy = abs(sin(vUv.y * 280.0));
-    float grid = (1.0 - smoothstep(0.85, 1.0, gx)) * (1.0 - smoothstep(0.85, 1.0, gy));
-    col *= mix(0.96, 1.0, grid);
+    // soft outer drop-shadow halo
+    float shadow = smoothstep(uShadow, 0.0, d) * 0.32;
 
-    // grain
-    float g = hash(vUv * vec2(1080.0, 1920.0) + uTime);
-    col += (g - 0.5) * 0.05;
+    // soft mask wipe between A and B, biased by a smooth noise field
+    float n = hash(floor(vUv * 8.0));
+    n = mix(n, vUv.y, 0.55);
+    float wipe = smoothstep(uTransition - 0.22, uTransition + 0.22, n);
 
-    // accent rim — left edge picks up brand color subtly
-    float rim = smoothstep(0.0, 0.18, vUv.x);
-    col = mix(uAccent * 0.5 + col * 0.5, col, rim);
+    // subtle scale-in feel on incoming texture
+    float zoom = mix(1.04, 1.0, smoothstep(0.0, 1.0, uTransition));
+    vec2 uvB = (vUv - 0.5) * zoom + 0.5;
+    vec2 uvA = (vUv - 0.5) * mix(1.0, 0.98, uTransition) + 0.5;
 
-    // vignette
-    float v = smoothstep(1.2, 0.3, length(vUv - 0.5) * 1.6);
-    col *= mix(0.82, 1.0, v);
+    vec3 a = texture2D(uTexA, uvA).rgb;
+    vec3 b = texture2D(uTexB, uvB).rgb;
+    vec3 col = mix(b, a, wipe);
 
-    // soft paper fade on left edge — protects readability of hero text
-    float leftFade = smoothstep(0.0, 0.45, vUv.x);
+    // soft inner vignette on the card itself for editorial depth
+    float r = length((vUv - 0.5) * vec2(uAspect, 1.0));
+    col *= mix(1.0, 0.86, smoothstep(0.25, 0.85, r));
+
+    // warm highlight pulled slightly toward center
+    col = mix(col, col * vec3(1.05, 1.02, 0.97), 0.18);
+
+    // fine grain
+    float g = hash(vUv * vec2(1600.0, 2400.0) + uTime * 0.6);
+    col += (g - 0.5) * 0.025;
+
+    // left-edge fade so right-stacked cards don't fight hero text
+    float leftFade = smoothstep(0.0, uLeftFade, vUv.x);
     col = mix(uPaper, col, leftFade);
-    float alpha = leftFade;
 
-    // gentle fade on top/bottom too so plane breathes into page
-    float topFade = smoothstep(0.0, 0.12, vUv.y);
-    float botFade = smoothstep(0.0, 0.12, 1.0 - vUv.y);
-    alpha *= topFade * botFade;
+    // composite: paper-tinted shadow halo first, then card on top
+    vec3 shadowCol = mix(uPaper, vec3(0.05, 0.045, 0.04), 0.45);
+    vec3 outCol = mix(shadowCol, col, cardMask);
+    float outA = max(cardMask, shadow) * leftFade;
 
-    gl_FragColor = vec4(col, alpha);
+    gl_FragColor = vec4(outCol, outA);
   }
 `;
 
-function ContentPlane() {
+type CardConfig = {
+  size: [number, number];
+  position: [number, number, number];
+  rotation: number;
+  scale: number;
+  radius: number;
+  shadow: number;
+  leftFade: number;
+  textureSet: number[];
+  cycleMs: number;
+  driftAmp: number;
+  parallax: number;
+};
+
+function Card({
+  textures,
+  config,
+  isMobile,
+}: {
+  textures: THREE.Texture[];
+  config: CardConfig;
+  isMobile: boolean;
+}) {
   const matRef = useRef<THREE.ShaderMaterial>(null!);
   const meshRef = useRef<THREE.Mesh>(null!);
-  const textures = useTexture(works) as THREE.Texture[];
-
-  const idxA = useRef(0);
-  const idxB = useRef(1);
+  const idxA = useRef(config.textureSet[0]);
+  const idxB = useRef(config.textureSet[1 % config.textureSet.length]);
+  const cursor = useRef(0);
   const transition = useRef(0);
   const scrollRef = useRef(0);
   const pointerRef = useRef(new THREE.Vector2(0, 0));
-  const { size } = useThree();
 
-  useEffect(() => {
-    textures.forEach((t) => {
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.minFilter = THREE.LinearFilter;
-      t.generateMipmaps = false;
-    });
-  }, [textures]);
+  const aspect = config.size[0] / config.size[1];
 
   useEffect(() => {
     let killed = false;
@@ -142,22 +142,23 @@ function ContentPlane() {
       if (killed) return;
       gsap.to(transition, {
         current: 1,
-        duration: 1.6,
-        ease: 'power2.inOut',
+        duration: 1.4,
+        ease: 'power3.inOut',
         onComplete: () => {
           if (killed) return;
           idxA.current = idxB.current;
-          idxB.current = (idxB.current + 1) % textures.length;
+          cursor.current = (cursor.current + 1) % config.textureSet.length;
+          idxB.current = config.textureSet[cursor.current];
           transition.current = 0;
         },
       });
     };
-    const i = window.setInterval(cycle, 3600);
+    const i = window.setInterval(cycle, config.cycleMs);
     return () => {
       killed = true;
       window.clearInterval(i);
     };
-  }, [textures.length]);
+  }, [config.cycleMs, config.textureSet]);
 
   useEffect(() => {
     const st = ScrollTrigger.create({
@@ -170,44 +171,49 @@ function ContentPlane() {
     return () => st.kill();
   }, []);
 
-  const isMobile = size.width < 768;
-  const baseScale = useRef(isMobile ? 0.7 : 0.95);
-  const basePosX = useRef(isMobile ? 0.0 : 1.35);
-  const basePosY = useRef(isMobile ? -0.7 : 0.15);
-
-  useEffect(() => {
-    baseScale.current = isMobile ? 0.7 : 0.95;
-    basePosX.current = isMobile ? 0.0 : 1.35;
-    basePosY.current = isMobile ? -0.7 : 0.15;
-  }, [isMobile]);
-
   useFrame((state, delta) => {
     if (matRef.current) {
       const u = matRef.current.uniforms;
       u.uTime.value += delta;
       u.uTransition.value = transition.current;
-      u.uScroll.value = scrollRef.current;
       u.uTexA.value = textures[idxA.current];
       u.uTexB.value = textures[idxB.current];
-      pointerRef.current.lerp(state.pointer, 0.04);
-      u.uPointer.value.copy(pointerRef.current);
+      pointerRef.current.lerp(state.pointer, 0.05);
     }
     if (meshRef.current) {
       const t = state.clock.elapsedTime;
-      meshRef.current.position.x = basePosX.current + Math.sin(t * 0.45) * 0.09 + pointerRef.current.x * 0.08;
+      const [px, py, pz] = config.position;
+      const drift = config.driftAmp;
+      const par = config.parallax;
+      const mobileBias = isMobile ? 0.45 : 1.0;
+
+      meshRef.current.position.x =
+        px * mobileBias +
+        Math.sin(t * 0.32 + py) * drift +
+        pointerRef.current.x * par * 0.18;
       meshRef.current.position.y =
-        basePosY.current + Math.sin(t * 0.32) * 0.08 + Math.cos(t * 0.22) * 0.04 + pointerRef.current.y * 0.05;
-      meshRef.current.rotation.z = Math.sin(t * 0.4) * 0.04;
-      meshRef.current.rotation.y = -0.22 + Math.sin(t * 0.28) * 0.07 + pointerRef.current.x * 0.05;
-      meshRef.current.rotation.x = Math.sin(t * 0.18) * 0.04;
-      const s = baseScale.current * (1 + Math.sin(t * 0.55) * 0.02);
+        py +
+        Math.cos(t * 0.26 + px) * drift * 0.9 +
+        pointerRef.current.y * par * 0.14 -
+        scrollRef.current * par * 0.9;
+      meshRef.current.position.z = pz;
+
+      meshRef.current.rotation.z =
+        config.rotation + Math.sin(t * 0.22 + px) * 0.018;
+      meshRef.current.rotation.y =
+        Math.sin(t * 0.18) * 0.04 + pointerRef.current.x * 0.05 * par;
+      meshRef.current.rotation.x =
+        Math.cos(t * 0.16) * 0.025 + pointerRef.current.y * 0.04 * par;
+
+      const breathing = 1 + Math.sin(t * 0.5 + py) * 0.012;
+      const s = config.scale * (isMobile ? 0.8 : 1.0) * breathing;
       meshRef.current.scale.set(s, s, s);
     }
   });
 
   return (
-    <mesh ref={meshRef} rotation={[0, -0.22, 0]}>
-      <planeGeometry args={[1.4, 1.75, 96, 96]} />
+    <mesh ref={meshRef}>
+      <planeGeometry args={[config.size[0], config.size[1], 1, 1]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={vert}
@@ -215,12 +221,13 @@ function ContentPlane() {
         uniforms={{
           uTime: { value: 0 },
           uTransition: { value: 0 },
-          uScroll: { value: 0 },
-          uPointer: { value: new THREE.Vector2(0, 0) },
-          uTexA: { value: textures[0] },
-          uTexB: { value: textures[1] },
-          uAccent: { value: new THREE.Color('#C66B3D') },
+          uTexA: { value: textures[idxA.current] },
+          uTexB: { value: textures[idxB.current] },
           uPaper: { value: new THREE.Color('#F4F1EA') },
+          uRadius: { value: config.radius },
+          uAspect: { value: aspect },
+          uShadow: { value: config.shadow },
+          uLeftFade: { value: config.leftFade },
         }}
         transparent
         depthWrite={false}
@@ -229,13 +236,84 @@ function ContentPlane() {
   );
 }
 
-function AmbientGradient() {
+function Gallery() {
+  const textures = useTexture(works) as THREE.Texture[];
+  const { size } = useThree();
+  const isMobile = size.width < 768;
+
+  useEffect(() => {
+    textures.forEach((t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.minFilter = THREE.LinearFilter;
+      t.generateMipmaps = false;
+      t.anisotropy = 4;
+    });
+  }, [textures]);
+
+  const cards = useMemo<CardConfig[]>(
+    () => [
+      // foreground hero card — biased right, largest, most visible
+      {
+        size: [1.05, 1.32],
+        position: [1.55, 0.12, 0.55],
+        rotation: -0.06,
+        scale: 1.0,
+        radius: 0.06,
+        shadow: 0.22,
+        leftFade: 0.18,
+        textureSet: [0, 3, 5, 7],
+        cycleMs: 4200,
+        driftAmp: 0.05,
+        parallax: 1.0,
+      },
+      // mid card — upper-right, smaller, slight tilt right
+      {
+        size: [0.78, 0.98],
+        position: [2.15, 0.95, -0.05],
+        rotation: 0.11,
+        scale: 0.78,
+        radius: 0.07,
+        shadow: 0.28,
+        leftFade: 0.04,
+        textureSet: [1, 4, 8, 2],
+        cycleMs: 5400,
+        driftAmp: 0.07,
+        parallax: 0.55,
+      },
+      // back card — lower-right, smallest, biggest tilt, most recessed
+      {
+        size: [0.7, 0.88],
+        position: [1.25, -1.05, -0.6],
+        rotation: 0.18,
+        scale: 0.7,
+        radius: 0.08,
+        shadow: 0.36,
+        leftFade: 0.08,
+        textureSet: [2, 6, 0, 4],
+        cycleMs: 6200,
+        driftAmp: 0.06,
+        parallax: 0.32,
+      },
+    ],
+    [],
+  );
+
+  return (
+    <group>
+      {cards.map((c, i) => (
+        <Card key={i} textures={textures} config={c} isMobile={isMobile} />
+      ))}
+    </group>
+  );
+}
+
+function AmbientBackdrop() {
   const matRef = useRef<THREE.ShaderMaterial>(null!);
   useFrame((_, delta) => {
     if (matRef.current) matRef.current.uniforms.uTime.value += delta;
   });
   return (
-    <mesh position={[0, 0, -2]} scale={10}>
+    <mesh position={[0, 0, -2]} scale={12}>
       <planeGeometry args={[1, 1, 1, 1]} />
       <shaderMaterial
         ref={matRef}
@@ -248,11 +326,23 @@ function AmbientGradient() {
           float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
           void main(){
             vec3 paper = vec3(0.957, 0.945, 0.918);
-            vec3 cream = vec3(0.937, 0.918, 0.878);
-            float r = length(vUv - 0.5);
-            vec3 col = mix(paper, cream * 0.94, smoothstep(0.0, 0.85, r));
-            float g = hash(vUv * 2048.0 + uTime);
-            col += (g - 0.5) * 0.012;
+            vec3 warm  = vec3(0.929, 0.898, 0.844);
+            vec3 deep  = vec3(0.902, 0.866, 0.810);
+
+            // soft warm bias toward bottom-right where the cards live
+            vec2 c = vUv - vec2(0.72, 0.42);
+            float r = length(c * vec2(1.2, 1.0));
+            vec3 col = mix(paper, warm, smoothstep(0.0, 0.55, r));
+            col = mix(col, deep, smoothstep(0.55, 1.0, r) * 0.7);
+
+            // sweeping highlight near hero text — subtle
+            float hl = smoothstep(0.0, 0.55, 0.55 - length(vUv - vec2(0.18, 0.62)));
+            col += hl * 0.018;
+
+            // ultra-fine paper grain
+            float g = hash(vUv * 2400.0 + uTime * 0.4);
+            col += (g - 0.5) * 0.014;
+
             gl_FragColor = vec4(col, 1.0);
           }
         `}
@@ -265,8 +355,8 @@ export default function Scene() {
   return (
     <div className="pointer-events-none fixed inset-0" style={{ zIndex: -1 }}>
       <Canvas
-        dpr={[1, 1.6]}
-        camera={{ position: [0, 0, 3.2], fov: 38 }}
+        dpr={[1, 1.7]}
+        camera={{ position: [0, 0, 3.4], fov: 38 }}
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
@@ -274,8 +364,8 @@ export default function Scene() {
         }}
       >
         <Suspense fallback={null}>
-          <AmbientGradient />
-          <ContentPlane />
+          <AmbientBackdrop />
+          <Gallery />
         </Suspense>
       </Canvas>
     </div>
