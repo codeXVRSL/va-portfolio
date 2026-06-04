@@ -25,6 +25,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       smoothWheel: true,
     });
     lenisRef.current = lenis;
+    (window as unknown as { __lenis?: Lenis }).__lenis = lenis;
 
     const onScroll = () => ScrollTrigger.update();
     lenis.on('scroll', onScroll);
@@ -45,6 +46,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       window.removeEventListener('keydown', onKey);
       gsap.ticker.remove(tick);
       lenis.destroy();
+      delete (window as unknown as { __lenis?: Lenis }).__lenis;
     };
   }, []);
 
