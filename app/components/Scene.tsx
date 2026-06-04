@@ -145,7 +145,7 @@ function PaperPlane() {
   const matRef = useRef<THREE.ShaderMaterial>(null!);
   const meshRef = useRef<THREE.Mesh>(null!);
   const textures = useTexture(works) as THREE.Texture[];
-  const { size } = useThree();
+  const { size, viewport } = useThree();
 
   const idxA = useRef(0);
   const idxB = useRef(1);
@@ -226,27 +226,22 @@ function PaperPlane() {
       u.uCurl.value = curl.current;
       u.uScrollVel.value = scrollVel.current;
     }
-
-    if (meshRef.current) {
-      const t = state.clock.elapsedTime;
-      const baseX = isMobile ? 0.0 : 1.2;
-      const baseY = isMobile ? -0.55 : 0.12;
-      meshRef.current.position.x =
-        baseX + (reducedMotion ? 0 : pointer.current.x * 0.06);
-      meshRef.current.position.y =
-        baseY +
-        (reducedMotion ? 0 : Math.sin(t * 0.25) * 0.02 + pointer.current.y * 0.04);
-      meshRef.current.rotation.z = reducedMotion ? 0 : Math.sin(t * 0.18) * 0.01;
-      meshRef.current.rotation.y =
-        reducedMotion ? 0 : -0.12 + pointer.current.x * 0.04 + curl.current * 0.08;
-      meshRef.current.rotation.x = reducedMotion ? 0 : pointer.current.y * 0.03;
-    }
   });
 
-  const planeSize: [number, number] = isMobile ? [1.4, 1.4] : [1.75, 1.75];
+  const planeWidth = isMobile
+    ? Math.min(viewport.width * 0.78, 2.2)
+    : Math.min(Math.max(viewport.width * 0.42, 1.35), 1.85);
+  const planeSize: [number, number] = [planeWidth, planeWidth];
+
+  const halfVW = viewport.width / 2;
+  const halfPW = planeWidth / 2;
+  // desktop: anchor center near right edge, bleed ~25% of plane off the side
+  // mobile: dead-center horizontally, sit in lower third
+  const posX = isMobile ? 0 : halfVW - halfPW * 0.55;
+  const posY = isMobile ? -viewport.height * 0.22 : 0;
 
   return (
-    <mesh ref={meshRef} rotation={[0, -0.12, 0]}>
+    <mesh ref={meshRef} position={[posX, posY, 0]} rotation={[0, -0.08, 0]}>
       <planeGeometry args={[planeSize[0], planeSize[1], 64, 64]} />
       <shaderMaterial
         ref={matRef}
