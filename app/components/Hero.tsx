@@ -210,9 +210,9 @@ export default function Hero() {
               ref={h1}
               className="font-display font-normal text-ink text-balance"
               style={{
-                fontSize: 'var(--t-hero)',
-                lineHeight: 0.88,
-                letterSpacing: '-0.045em',
+                fontSize: 'clamp(2.4rem, 6.2vw, 6.6rem)',
+                lineHeight: 0.92,
+                letterSpacing: '-0.035em',
               }}
             >
               <span className="block">Jamaica Tinguha</span>
