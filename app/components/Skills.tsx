@@ -111,7 +111,7 @@ export default function Skills() {
   return (
     <section
       ref={ref}
-      className="relative scroll-mt-24 overflow-hidden bg-paper px-6 py-24 lg:px-10 lg:py-40"
+      className="surface-soft relative scroll-mt-24 overflow-hidden px-6 py-24 lg:px-10 lg:py-40"
     >
       {/* ornament */}
       <span className="skills-ornament pointer-events-none absolute -left-6 top-16 select-none font-display text-[12rem] italic leading-none text-accent/[0.08] sm:text-[16rem] md:-left-12 md:top-20 md:text-[22rem]">
@@ -226,13 +226,16 @@ export default function Skills() {
                 <span className="h-px w-8 bg-ink/25" />
                 <span>AI tools</span>
               </div>
-              <ul className="mt-5 flex flex-wrap gap-1.5 text-[0.78rem]">
+              <ul className="mt-5 grid grid-cols-1 gap-x-6 text-[0.92rem] sm:grid-cols-2">
                 {ai.map((a) => (
                   <li
                     key={a}
-                    className="ai-chip rounded-full border border-accent/35 bg-accent/[0.07] px-3.5 py-1.5 uppercase tracking-[0.12em] text-accent transition hover:-translate-y-0.5 hover:bg-accent hover:text-paper"
+                    className="ai-chip group flex items-center justify-between border-b border-accent/25 py-2.5 text-accent transition-colors hover:text-ink"
                   >
-                    {a}
+                    <span>{a}</span>
+                    <span className="text-accent/40 opacity-0 transition-all duration-500 group-hover:translate-x-1 group-hover:opacity-100">
+                      ◦
+                    </span>
                   </li>
                 ))}
               </ul>

@@ -64,7 +64,7 @@ export default function About() {
     <section
       id="about"
       ref={ref}
-      className="relative scroll-mt-24 overflow-hidden bg-paper px-6 py-24 lg:px-10 lg:py-40"
+      className="surface-warm relative scroll-mt-24 overflow-hidden px-6 py-24 lg:px-10 lg:py-40"
     >
       <div className="mx-auto max-w-[1440px]">
         <SectionLabel number="01" label="About" />

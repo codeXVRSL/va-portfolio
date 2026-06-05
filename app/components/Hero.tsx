@@ -30,6 +30,9 @@ export default function Hero() {
       autoAlpha: 0,
       y: 20,
     });
+    gsap.set('.hero-portrait-frame', { clipPath: 'inset(100% 0% 0% 0%)' });
+    gsap.set('.hero-portrait-img', { scale: 1.18 });
+    gsap.set(['.hero-tag', '.hero-ornament'], { autoAlpha: 0, y: 14 });
   }, []);
 
   useEffect(() => {
@@ -60,6 +63,10 @@ export default function Hero() {
       tl.to('.hero-meta', { autoAlpha: 1, y: 0, duration: 0.7 })
         .to('.hero-rule', { autoAlpha: 1, y: 0, scaleX: 1, duration: 0.9 }, 0.05)
         .to('.hero-kicker', { autoAlpha: 1, y: 0, duration: 0.65 }, 0.15)
+        .to('.hero-portrait-frame', { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.4, ease: 'expo.out' }, 0.2)
+        .to('.hero-portrait-img', { scale: 1, duration: 1.6, ease: 'expo.out' }, 0.2)
+        .to('.hero-ornament', { autoAlpha: 1, y: 0, duration: 0.9 }, 0.35)
+        .to('.hero-tag', { autoAlpha: 1, y: 0, duration: 0.7 }, 0.55)
         .to(
           split.chars,
           { yPercent: 0, duration: 1.05, stagger: { each: 0.012, from: 'start' } },
@@ -134,6 +141,27 @@ export default function Hero() {
             scrub: 1,
           },
         });
+        // portrait floats up slower than text → editorial parallax
+        gsap.to('.hero-portrait', {
+          yPercent: -22,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: root.current,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 0.6,
+          },
+        });
+        gsap.to('.hero-ornament', {
+          yPercent: -45,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: root.current,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 1.2,
+          },
+        });
       });
 
       return () => split.revert();
@@ -166,68 +194,131 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* HEADLINE — viewport-scale editorial statement, bleeds past 1400 clamp */}
-      <div className="mt-14 w-full flex-1 sm:mt-20 md:mt-24">
-        <div className="mx-auto max-w-[1400px]">
-          <div className="hero-rule mb-6 flex items-center gap-4 md:mb-10">
-            <span className="block h-px w-24 origin-left scale-x-0 bg-accent/70" />
-            <span className="hero-kicker font-mono text-[0.6rem] uppercase tracking-[0.42em] text-ink/55">
-              Social media · Strategy · Story
-            </span>
-          </div>
-        </div>
+      {/* EDITORIAL SPREAD — left: massive type; right: portrait plate */}
+      <div className="mt-12 w-full flex-1 sm:mt-16 md:mt-20">
+        <div className="mx-auto grid w-full max-w-[1500px] grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12 md:gap-x-10 md:gap-y-14">
+          {/* LEFT COLUMN — type spread */}
+          <div className="md:col-span-7 lg:col-span-7">
+            <div className="hero-rule mb-6 flex items-center gap-4 md:mb-10">
+              <span className="block h-px w-24 origin-left scale-x-0 bg-accent/70" />
+              <span className="hero-kicker font-mono text-[0.6rem] uppercase tracking-[0.42em] text-ink/55">
+                Social media · Strategy · Story
+              </span>
+            </div>
 
-        <h1
-          ref={h1}
-          className="font-display font-normal text-ink text-balance mx-auto max-w-[1480px]"
-          style={{
-            fontSize: 'clamp(2.9rem, 11vw, 11rem)',
-            lineHeight: 0.9,
-            letterSpacing: '-0.045em',
-          }}
-        >
-          <span className="block">Jamaica Tinguha makes</span>
-          <span className="block">
-            <em className="italic text-ink/85">social media</em> that turns
-          </span>
-          <span className="block">
-            followers into{' '}
-            <span ref={magnet} className="relative inline-block italic text-accent">
-              clients.
-            </span>
-          </span>
-        </h1>
-
-        <div className="mt-10 grid grid-cols-1 gap-10 md:mt-16 md:grid-cols-12 md:gap-8">
-          <p className="hero-lede font-display md:col-span-5 md:col-start-1 text-[1.05rem] italic leading-[1.55] text-ink/70 sm:text-[1.18rem]">
-            Strategy, story &amp; quiet, dependable craft — partnering with real estate
-            professionals, growing brands, and busy founders who&rsquo;d rather build their
-            business than babysit a feed.
-          </p>
-
-          <div className="hero-action flex items-center gap-5 md:col-span-4 md:col-start-7">
-            <a
-              href="#work"
-              className="group inline-flex items-center gap-3 rounded-full border border-ink bg-ink px-7 py-3.5 text-[0.72rem] font-medium uppercase tracking-[0.28em] text-paper transition-all duration-500 hover:-translate-y-0.5 hover:border-accent hover:bg-accent"
+            <h1
+              ref={h1}
+              className="font-display font-normal text-ink text-balance"
+              style={{
+                fontSize: 'var(--t-hero)',
+                lineHeight: 0.88,
+                letterSpacing: '-0.045em',
+              }}
             >
-              <span>Selected work</span>
+              <span className="block">Jamaica Tinguha</span>
+              <span className="block">
+                makes <em className="italic text-ink/80">social</em>
+              </span>
+              <span className="block">
+                that turns followers
+              </span>
+              <span className="block">
+                into{' '}
+                <span ref={magnet} className="relative inline-block italic text-accent">
+                  clients.
+                </span>
+              </span>
+            </h1>
+
+            <p className="hero-lede mt-10 max-w-[44ch] font-display text-[var(--t-lede)] italic leading-[1.55] text-ink/70 md:mt-14">
+              Strategy, story &amp; quiet, dependable craft — partnering with real estate
+              professionals, growing brands, and busy founders who&rsquo;d rather build their
+              business than babysit a feed.
+            </p>
+
+            <div className="hero-action mt-10 flex flex-wrap items-center gap-5">
+              <a
+                href="#work"
+                className="group inline-flex items-center gap-3 rounded-full border border-ink bg-ink px-7 py-3.5 text-[0.72rem] font-medium uppercase tracking-[0.28em] text-paper transition-all duration-500 hover:-translate-y-0.5 hover:border-accent hover:bg-accent"
+              >
+                <span>Selected work</span>
+                <span
+                  aria-hidden
+                  className="inline-block transition-transform duration-500 group-hover:translate-x-1"
+                >
+                  →
+                </span>
+              </a>
+              <a
+                href="#contact"
+                className="group inline-flex items-center gap-2 text-[0.72rem] font-medium uppercase tracking-[0.28em] text-ink/70"
+              >
+                <span className="relative">
+                  Get in touch
+                  <span className="absolute -bottom-1 left-0 h-px w-full bg-ink/30 transition-all duration-500 group-hover:bg-accent" />
+                </span>
+              </a>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN — editorial portrait plate */}
+          <aside className="hero-plate relative md:col-span-5 lg:col-span-5">
+            <figure className="hero-portrait relative mx-auto w-[78%] max-w-[440px] md:w-full md:max-w-none md:translate-y-2 lg:translate-y-6">
+              {/* editorial tag, top-left, rotated */}
+              <div className="hero-tag absolute -left-3 -top-4 z-10 flex items-center gap-2 rounded-full border border-ink/15 bg-paper/95 px-3 py-1.5 font-mono text-[0.58rem] uppercase tracking-[0.32em] text-ink/70 shadow-[0_18px_30px_-22px_rgba(43,35,28,0.55)] backdrop-blur md:-left-6 md:-top-6 md:px-4 md:py-2">
+                <span className="font-display text-[0.78rem] italic tracking-normal text-accent">
+                  01
+                </span>
+                <span>Press portrait</span>
+              </div>
+
+              {/* large italic accent letter behind the frame */}
               <span
                 aria-hidden
-                className="inline-block transition-transform duration-500 group-hover:translate-x-1"
+                className="hero-ornament pointer-events-none absolute -right-3 -top-12 z-0 select-none font-display text-[10rem] italic leading-none text-accent/[0.12] sm:-right-6 sm:text-[14rem] md:-right-8 md:-top-16 md:text-[18rem]"
               >
-                →
+                J
               </span>
-            </a>
-            <a
-              href="#contact"
-              className="group inline-flex items-center gap-2 text-[0.72rem] font-medium uppercase tracking-[0.28em] text-ink/70"
-            >
-              <span className="relative">
-                Get in touch
-                <span className="absolute -bottom-1 left-0 h-px w-full bg-ink/30 transition-all duration-500 group-hover:bg-accent" />
-              </span>
-            </a>
-          </div>
+
+              <div className="hero-portrait-frame relative z-[1] aspect-[4/5] w-full overflow-hidden bg-cream">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/portrait/jamaica-1.jpg"
+                  alt="Jamaica Tinguha — Social Media Manager"
+                  className="hero-portrait-img absolute inset-0 h-full w-full object-cover object-[center_18%] grayscale-[0.04] saturate-[0.95]"
+                />
+                {/* paper-tone wash overlays to blend with backdrop */}
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-paper/10 mix-blend-multiply" />
+                <span className="pointer-events-none absolute inset-y-0 left-0 w-[18%] bg-gradient-to-r from-paper to-transparent" />
+
+                {/* foot caption inside the frame */}
+                <figcaption className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-4 text-paper md:p-5">
+                  <div>
+                    <div className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-paper/80">
+                      Edition MMXXVI
+                    </div>
+                    <div className="mt-1 font-display text-[1.05rem] italic leading-tight tracking-[-0.01em] md:text-[1.25rem]">
+                      The keeper of feeds.
+                    </div>
+                  </div>
+                  <div className="text-right font-mono text-[0.55rem] uppercase tracking-[0.32em] text-paper/80">
+                    Naga, PH
+                    <br />
+                    <span className="text-accent">●</span> live
+                  </div>
+                </figcaption>
+              </div>
+
+              {/* meta strip beneath the frame */}
+              <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-ink/15 pt-3 font-mono text-[0.55rem] uppercase tracking-[0.32em] text-ink/55">
+                <span>Studio of one</span>
+                <span className="font-display text-[0.78rem] italic tracking-normal text-accent">
+                  Vol. 01
+                </span>
+                <span>2026</span>
+              </div>
+            </figure>
+          </aside>
         </div>
       </div>
 

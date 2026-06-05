@@ -21,8 +21,15 @@ const stats = [
 
 export default function Why() {
   return (
-    <section className="relative bg-ink px-6 py-28 text-paper lg:px-10 lg:py-40">
-      <div className="mx-auto max-w-[1440px]">
+    <section className="surface-ink relative overflow-hidden px-6 py-28 lg:px-10 lg:py-40">
+      {/* signature: ghost statement word, bleeds the section */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -left-4 -bottom-6 select-none font-display text-[14rem] italic leading-[0.8] text-paper/[0.05] sm:text-[20rem] md:-left-12 md:-bottom-10 md:text-[32rem]"
+      >
+        Reliable.
+      </span>
+      <div className="relative mx-auto max-w-[1440px]">
         <div className="mb-10 flex items-baseline gap-3 text-xs uppercase tracking-[0.22em] text-paper/60">
           <span className="tabular font-mono text-accent">03</span>
           <span className="h-px flex-1 max-w-12 bg-paper/20" />
