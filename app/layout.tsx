@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Instrument_Serif, Inter, JetBrains_Mono } from 'next/font/google';
+import { Instrument_Serif, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Shell from './components/Shell';
 
@@ -11,7 +11,8 @@ const display = Instrument_Serif({
   display: 'swap',
 });
 
-const sans = Inter({
+const sans = Space_Grotesk({
+  weight: ['300', '400', '500', '600', '700'],
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
