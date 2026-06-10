@@ -1,5 +1,5 @@
 import Hero from './components/Hero';
-import Marquee from './components/Marquee';
+import VelocityStrip from './components/VelocityStrip';
 import About from './components/About';
 import Services from './components/Services';
 import Why from './components/Why';
@@ -14,7 +14,7 @@ export default function Page() {
     <main className="relative">
       <SceneClient />
       <Hero />
-      <Marquee />
+      <VelocityStrip />
       <About />
       <Services />
       <Why />

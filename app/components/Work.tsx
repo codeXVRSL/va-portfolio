@@ -117,7 +117,7 @@ export default function Work() {
   return (
     <section
       id="work"
-      className="relative scroll-mt-24 bg-cream px-6 py-28 lg:px-10 lg:py-40"
+      className="surface-deep relative scroll-mt-24 px-6 py-28 lg:px-10 lg:py-40"
     >
       <div className="mx-auto max-w-[1440px]">
         <SectionLabel number="05" label="Sample works" />

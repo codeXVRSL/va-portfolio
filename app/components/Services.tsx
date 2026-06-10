@@ -58,18 +58,21 @@ function ServiceCard({ s, i }: { s: (typeof services)[number]; i: number }) {
       const arrow = card.querySelector('.svc-arrow');
       const title = card.querySelector('.svc-title');
 
-      gsap.set(reveal, { height: 0, opacity: 0 });
+      const num = card.querySelector('.svc-num');
 
       const enter = () => {
-        gsap.to(reveal, { height: 'auto', opacity: 1, duration: 0.5, ease: 'expo.out' });
-        gsap.to(arrow, { rotate: 45, x: 4, duration: 0.4, ease: 'expo.out' });
+        gsap.to(reveal, { opacity: 1, x: 0, duration: 0.5, ease: 'expo.out' });
+        gsap.to(arrow, { x: 8, color: '#C66B3D', duration: 0.4, ease: 'expo.out' });
         gsap.to(title, { color: '#C66B3D', duration: 0.4 });
+        gsap.to(num, { x: -4, duration: 0.5, ease: 'expo.out' });
       };
       const leave = () => {
-        gsap.to(reveal, { height: 0, opacity: 0, duration: 0.45, ease: 'expo.inOut' });
-        gsap.to(arrow, { rotate: 0, x: 0, duration: 0.4, ease: 'expo.out' });
+        gsap.to(reveal, { opacity: 0.65, x: 0, duration: 0.45, ease: 'expo.inOut' });
+        gsap.to(arrow, { x: 0, color: 'rgba(11,11,10,0.3)', duration: 0.4, ease: 'expo.out' });
         gsap.to(title, { color: '#0B0B0A', duration: 0.4 });
+        gsap.to(num, { x: 0, duration: 0.5, ease: 'expo.out' });
       };
+      gsap.set(reveal, { opacity: 0.65 });
 
       card.addEventListener('pointerenter', enter);
       card.addEventListener('pointerleave', leave);
@@ -96,24 +99,32 @@ function ServiceCard({ s, i }: { s: (typeof services)[number]; i: number }) {
   );
 
   return (
-    <div
+    <article
       ref={cardRef}
-      className="svc-card group relative bg-cream p-8 transition-colors duration-500 hover:bg-paper"
+      className="svc-card group relative grid grid-cols-12 items-start gap-6 border-t border-ink/15 py-10 transition-colors duration-500 md:gap-8 md:py-14"
     >
-      <div className="flex items-baseline justify-between text-xs uppercase tracking-[0.18em] text-muted">
-        <span className="tabular font-mono text-accent">{s.n}</span>
-        <span className="svc-arrow inline-block">→</span>
-      </div>
-      <h3 className="svc-title mt-8 font-display text-3xl leading-tight tracking-tightest md:text-4xl">
-        {s.title}
-      </h3>
-      <p className="mt-4 text-sm leading-relaxed text-ink/75">{s.desc}</p>
-      <div className="svc-detail overflow-hidden">
-        <p className="mt-5 border-t border-ink/15 pt-4 text-xs uppercase tracking-[0.14em] text-muted">
-          {s.detail}
+      <span className="svc-num col-span-2 font-display text-[2.4rem] italic leading-none text-accent md:col-span-1 md:text-[3rem]">
+        {s.n}
+      </span>
+      <div className="col-span-10 md:col-span-7">
+        <h3 className="svc-title font-display text-3xl leading-[1.04] tracking-tightest text-ink md:text-[3.2rem]">
+          {s.title}
+        </h3>
+        <p className="mt-4 max-w-[58ch] text-[var(--t-body)] leading-relaxed text-ink/75">
+          {s.desc}
         </p>
       </div>
-    </div>
+      <div className="col-span-12 flex flex-col items-start gap-3 md:col-span-4 md:items-end md:text-right">
+        <span className="svc-arrow font-display text-[1.6rem] italic text-ink/30 md:text-[2rem]">
+          →
+        </span>
+        <div className="svc-detail overflow-hidden">
+          <p className="max-w-[26ch] border-t border-ink/15 pt-3 text-[0.7rem] uppercase tracking-[0.22em] text-ink/60 md:border-t-0 md:pt-0">
+            {s.detail}
+          </p>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -121,7 +132,7 @@ export default function Services() {
   return (
     <section
       id="services"
-      className="relative scroll-mt-24 bg-cream px-6 py-28 lg:px-10 lg:py-40"
+      className="surface-paper relative scroll-mt-24 px-6 py-28 lg:px-10 lg:py-40"
     >
       <div className="mx-auto max-w-[1440px]">
         <SectionLabel number="02" label="Here's how I can help" />
@@ -132,7 +143,7 @@ export default function Services() {
           Services that move the needle.
         </SplitHeading>
 
-        <div className="mt-16 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-ink/10 bg-ink/10 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-16 border-b border-ink/15">
           {services.map((s, i) => (
             <ServiceCard key={s.n} s={s} i={i} />
           ))}
